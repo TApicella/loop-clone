@@ -33324,6 +33324,12 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
     return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
 };
 
+var GameContext = reactExports.createContext({
+    gameState: {},
+    updateQueue: [],
+    drawQueue: [],
+});
+
 function _extends() {
   _extends = Object.assign ? Object.assign.bind() : function (target) {
     for (var i = 1; i < arguments.length; i++) {
@@ -64725,6 +64731,14 @@ var indexToDirection = {
     2: "DOWN",
     3: "LEFT"
 };
+var getRotation = function (direction) {
+    return {
+        "UP": 0,
+        "RIGHT": "0.25turn",
+        "DOWN": "0.5turn",
+        "LEFT": "0.75turn",
+    }[direction];
+};
 var Direction = /** @class */ (function () {
     function Direction(collection) {
         if (!(collection instanceof Vector)) {
@@ -64916,10 +64930,198 @@ var createFullLoop = function () {
     return loopData;
 };
 
+var TILE_WIDTH = 100;
+var TILE_OFFSET = [0.25, 0.25];
+var GridConstants = {
+    TILE_OFFSET: TILE_OFFSET,
+    TILE_WIDTH: TILE_WIDTH
+};
+var getPointInPx = function (point, scale, offset, log) {
+    if (log === void 0) { log = false; }
+    offset = offset || [0, 0];
+    if (log)
+        console.log(point, scale, offset, add(point, offset));
+    return add(point, offset).map(function (n) { return n * scale; });
+};
+// /**
+//  * Makes an element draggable and sets up event handlers
+// */
+// function dragElement(elmnt) {
+//     var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+//     if (document.getElementById(elmnt.id + "header")) {
+//         // if present, the header is where you move the DIV from:
+//         document.getElementById(elmnt.id + "header").onmousedown = dragMouseDown;
+//     } else {
+//         // otherwise, move the DIV from anywhere inside the DIV:
+//         elmnt.onmousedown = dragMouseDown;
+//     }
+//     function dragMouseDown(e) {
+//         e = e || window.event;
+//         e.preventDefault();
+//         // get the mouse cursor position at startup:
+//         pos3 = e.clientX;
+//         pos4 = e.clientY;
+//         document.onmouseup = closeDragElement;
+//         // call a function whenever the cursor moves:
+//         document.onmousemove = elementDrag;
+//     }
+//     function elementDrag(e) {
+//         let currentSelected = document.getElementsByClassName("item-selected") && document.getElementsByClassName("item-selected").length > 0 && document.getElementsByClassName("item-selected")[0];
+//         if (currentSelected) {
+//             currentSelected.classList.remove("item-selected")
+//         }
+//         e = e || window.event;
+//         window.game.selectedId = elmnt.id;
+//         document.getElementById(elmnt.id).classList.add("item-selected");
+//         e.preventDefault();
+//         // calculate the new cursor position:
+//         pos1 = pos3 - e.clientX;
+//         pos2 = pos4 - e.clientY;
+//         pos3 = e.clientX;
+//         pos4 = e.clientY;
+//         // set the element's new position:
+//         elmnt.classList.add("item-selected")
+//         elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+//         elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+//     }
+//     function closeDragElement(e) {
+//         // stop moving when mouse button is released:
+//         document.onmouseup = null;
+//         document.onmousemove = null;
+//     }
+// }
+// const itemRef = {
+//     "fruit": {
+//         src: "fruit.png",
+//         countable: true,
+//         count: 0,
+//         itemtype: "fruit"
+//     }
+// }
+// function createItem(attrs, inventory = false) {
+//     const newItem = document.createElement("img");
+//     for (let attr of Object.keys(attrs)) {
+//         newItem.setAttribute(attr, attrs[attr]);
+//     }
+//     newItem.onclick = function (e) {
+//         let elem = document.getElementById(e.target.id);
+//         if (elem && elem.classList.contains("moveable")) {
+//             let currentSelected = document.getElementsByClassName("item-selected");
+//             window.game.selectedId = null;;
+//             if (currentSelected && currentSelected.length && currentSelected.length > 0) {
+//                 let hasTarget = false;
+//                 Array.from(currentSelected).forEach((toRemove) => {
+//                     toRemove.classList.remove("item-selected")
+//                     if (toRemove.id === elem.id) {
+//                         hasTarget = true;
+//                     }
+//                 })
+//                 if (!hasTarget) {
+//                     elem.classList.add('item-selected');
+//                     window.game.selectedId = elem.id;
+//                 }
+//             }
+//             else {
+//                 elem.classList.add('item-selected');
+//                 window.game.selectedId = elem.id;
+//             }
+//         }
+//     };
+//     if (!inventory) {
+//         newItem.classList.add("moveable")
+//     }
+//     newItem.onmouseup = function (e) {
+//         if (e.target && e.target.id && document.getElementById(e.target.id)) {
+//             for (let elem of document.elementsFromPoint(e.clientX, e.clientY)) {
+//                 if (elem.getAttribute("customdrop")) {
+//                     e.explicitOriginalTarget = { ...e.target, id: newItem.id }
+//                     elem.dispatchEvent(
+//                         new CustomEvent(elem.getAttribute("customdrop"), e),
+//                     );
+//                 }
+//             }
+//         }
+//     }
+//     return newItem
+// }
+// function createInventory(slots, items) {
+//     if (!slots) {
+//         slots = 10;
+//     }
+//     if (!items) {
+//         items = {};
+//     }
+//     if (!window.game) {
+//         window.game = {};
+//     }
+//     window.game.inventory = window.game.inventory || {
+//         items, slots
+//     }
+//     window.game.drawInventory = function () {
+//         let { items, slots } = window.game.inventory;
+//         const newInventory = document.createElement('div');
+//         newInventory.id = "inventory";
+//         let counter = 0;
+//         for (let iname of Object.keys(items)) {
+//             let item = items[iname];
+//             let { countable, count } = item;
+//             let elem = document.createElement("div")
+//             elem.style = "position: relative; width: 100px; height: 100px; border: 3px solid #AAAAAA; margin: 6px";
+//             let img = createItem(item);
+//             img.style = "position: relative; width: 100%;"
+//             elem.appendChild(img);
+//             if (countable) {
+//                 let num = document.createElement("div");
+//                 num.innerHTML = "" + count;
+//                 num.style = "color: red; position: absolute; font-size: 32px; font-family: sans-serif; left: 75px; top: 65px; z-index: 5";
+//                 elem.appendChild(num);
+//             }
+//             newInventory.appendChild(elem);
+//             counter++;
+//         }
+//         while (counter < slots) {
+//             let elem = document.createElement("div")
+//             elem.style = "position: relative; width: 100px; height: 100px; border: 3px solid #AAAAAA; margin: 6px";
+//             newInventory.appendChild(elem);
+//             counter++;
+//         }
+//         document.getElementById("inventory").replaceWith(newInventory)
+//     }
+//     document.getElementById("inventoryWrapper").onclick = function (e) {
+//         if (!window.game || !window.game.selectedId) {
+//             return
+//         }
+//         let elem = document.getElementById(window.game.selectedId);
+//         if (elem && elem.getAttribute("itemtype")) {
+//             document.dispatchEvent(
+//                 new CustomEvent("addInventory", {detail: {explicitOriginalTarget: {id: elem.id}}}
+//                 ));
+//         }
+//     }
+//     window.game.drawInventory(window.game.inventory.items)
+// }
+// document.addEventListener("addInventory", (e) => {
+//     let itemTargetId = e.explicitOriginalTarget.id;
+//     if(e.detail && e.detail.explicitOriginalTarget){
+//         itemTargetId = e.detail.explicitOriginalTarget.id
+//     }
+//     let itemTarget = document.getElementById(itemTargetId);
+//     const itemType = itemTarget.getAttribute("itemtype");
+//     if (window.game.inventory.items[itemType]) {
+//         window.game.inventory.items[itemType].count++;
+//     }
+//     else {
+//         window.game.inventory.items[itemType] = { ...itemRef[itemType] }
+//         window.game.inventory.items[itemType].count = 1;
+//     }
+//     itemTarget.remove();
+//     window.game.drawInventory();
+// });
+
 var LoopTile = function (_a) {
-    var point = _a.point; _a.nextDirection; var directionName = _a.directionName, emptyNeighbors = _a.emptyNeighbors, idx = _a.idx;
+    var point = _a.point; _a.nextDirection; var directionName = _a.directionName, emptyNeighbors = _a.emptyNeighbors; _a.idx;
     // Translate the point
-    point = add(point, [0.25, 0.25]).map(function (n) { return n * 112; });
+    point = getPointInPx(point, GridConstants.TILE_WIDTH, GridConstants.TILE_OFFSET);
     // Make absolute style
     var style = {
         position: "absolute",
@@ -64930,106 +65132,95 @@ var LoopTile = function (_a) {
         color: "white",
     };
     var classNames = ["loopTile", "border-gradient-green"];
-    var classNamesExtra = [["loopTileEdge", "border-gradient-green"], ["loopTileEdge", "border-gradient-green"]];
-    var borderWrapperClassNames = [[], []];
     "border-".concat(directionName.toLowerCase(), "-");
     var neighborDirNames = emptyNeighbors.map(function (e) { return e.directionName.toLowerCase(); });
-    if (directionName === "UP") {
-        var filteredNames = neighborDirNames.filter(function (n) { return n != "down"; });
-        if (filteredNames.length === 1) {
-            classNamesExtra[0].push("border-up-down--".concat(filteredNames[0]));
-            classNamesExtra[0].push("flex-to-".concat(filteredNames[0], "-").concat(idx % 3));
-            classNamesExtra[1].push("border-up-".concat(filteredNames[0]));
-            classNamesExtra[1].push("flex-to-up-".concat(idx % 3));
-        }
-        else {
-            classNamesExtra[0].push("border-up-".concat(filteredNames[0]));
-            classNamesExtra[0].push("flex-to-up-".concat(idx % 3));
-            classNamesExtra[1].push("border-up-".concat(filteredNames[1]));
-            classNamesExtra[1].push("flex-to-up-".concat(idx % 3));
-        }
-    }
-    if (directionName === "RIGHT") {
-        var filteredNames = neighborDirNames.filter(function (n) { return n != "left"; });
-        if (filteredNames.length === 1) {
-            classNamesExtra[0].push("border-right-left--".concat(filteredNames[0]));
-            classNamesExtra[0].push("flex-to-".concat(filteredNames[0], "-").concat(idx % 3));
-            classNamesExtra[1].push("border-right-".concat(filteredNames[0]));
-            classNamesExtra[1].push("flex-to-right-".concat(idx % 3));
-        }
-        else {
-            classNamesExtra[0].push("border-right-".concat(filteredNames[0]));
-            classNamesExtra[0].push("flex-to-right-".concat(idx % 3));
-            classNamesExtra[1].push("border-right-".concat(filteredNames[1]));
-            classNamesExtra[1].push("flex-to-right-".concat(idx % 3));
-        }
-    }
-    if (directionName === "DOWN") {
-        var filteredNames = neighborDirNames.filter(function (n) { return n != "up"; });
-        if (filteredNames.length === 1) {
-            classNamesExtra[0].push("border-down-up--".concat(filteredNames[0]));
-            classNamesExtra[0].push("flex-to-".concat(filteredNames[0], "-").concat(idx % 3));
-            classNamesExtra[1].push("border-down-".concat(filteredNames[0]));
-            classNamesExtra[1].push("flex-to-down-".concat(idx % 3));
-        }
-        else {
-            classNamesExtra[0].push("border-down-".concat(filteredNames[0]));
-            classNamesExtra[0].push("flex-to-down-".concat(idx % 3));
-            classNamesExtra[1].push("border-down-".concat(filteredNames[1]));
-            classNamesExtra[1].push("flex-to-down-".concat(idx % 3));
-        }
-    }
-    if (directionName === "LEFT") {
-        var filteredNames = neighborDirNames.filter(function (n) { return n != "right"; });
-        if (filteredNames.length === 1) {
-            classNamesExtra[0].push("border-left-right--".concat(filteredNames[0]));
-            classNamesExtra[0].push("flex-to-".concat(filteredNames[0], "-").concat(idx % 3));
-            classNamesExtra[1].push("border-left-".concat(filteredNames[0]));
-            classNamesExtra[1].push("flex-to-left-".concat(idx % 3));
-        }
-        else {
-            classNamesExtra[0].push("border-left-".concat(filteredNames[0]));
-            classNamesExtra[0].push("flex-to-left-".concat(idx % 3));
-            classNamesExtra[1].push("border-left-".concat(filteredNames[1]));
-            classNamesExtra[1].push("flex-to-left-".concat(idx % 3));
-        }
-    }
+    classNames = classNames.concat(neighborDirNames.map(function (e) { return "border-".concat(e); }));
     return (React.createElement(React.Fragment, null,
-        React.createElement("div", { className: classNames.join(' '), style: style }),
-        React.createElement("div", { className: borderWrapperClassNames[0].join(' ') },
-            React.createElement("div", { className: classNamesExtra[0].join(' '), style: style })),
-        React.createElement("div", { className: borderWrapperClassNames[1].join(' ') },
-            React.createElement("div", { className: classNamesExtra[1].join(' '), style: style }))));
+        React.createElement("div", { className: classNames.join(' '), style: style })));
+};
+
+var ShipConstants = {
+    SHIP_SPEED: 0.1
+};
+var Ship = function () {
+    var _a = reactExports.useContext(GameContext).gameState, shipCoords = _a.shipCoords, shipIdx = _a.shipIdx, loop = _a.loop;
+    var coordsCheck = shipCoords ? __spreadArray([], shipCoords, true) : [0, 0];
+    var ship = document.getElementById("ship");
+    reactExports.useEffect(function () {
+        if (ship && loop) {
+            var shipPoint = getPointInPx(shipCoords, GridConstants.TILE_WIDTH, GridConstants.TILE_OFFSET, true);
+            var shipTile = loop[Math.floor(shipIdx)];
+            ship.style.setProperty('--shipX', "".concat(shipPoint[0], "px"));
+            ship.style.setProperty('--shipY', "".concat(shipPoint[1], "px"));
+            ship.style.setProperty('--shipRot', getRotation(shipTile.directionName) || 0);
+        }
+    }, [coordsCheck[0], coordsCheck[1]]);
+    return (React.createElement("div", { id: "ship" }));
 };
 
 var Loop = function (_a) {
-    var _b = reactExports.useContext(GameContext), gameState = _b.gameState, setGameState = _b.setGameState;
-    var _c = reactExports.useState(!!gameState.loop), loopCreated = _c[0], setLoopCreated = _c[1];
-    reactExports.useEffect(function () {
-        if (!loopCreated) {
-            var loop = createFullLoop();
-            console.log(loop);
-            setGameState(__assign(__assign({}, gameState), { loop: loop }));
-            setLoopCreated(true);
-        }
-    });
-    return (React.createElement("div", { id: "loop" },
-        !gameState.loop && React.createElement("div", null, "Oops"),
-        gameState.loop && gameState.loop.map(function (cell, i) {
-            return React.createElement(LoopTile, __assign({}, cell, { key: "tile" + i, idx: i }));
-        })));
+    var _b = reactExports.useContext(GameContext), gameState = _b.gameState; _b.setGameState;
+    return (React.createElement(React.Fragment, null,
+        React.createElement("div", { id: "loop" },
+            React.createElement(Ship, null),
+            !gameState.loop && React.createElement("div", null, "Oops"),
+            gameState.loop && gameState.loop.map(function (cell, i) {
+                return React.createElement(LoopTile, __assign({}, cell, { key: "tile" + i, idx: i }));
+            }))));
 };
 
+var useInterval = function (callback, delay) {
+    var savedCallback = reactExports.useRef();
+    // Remember the latest callback.
+    reactExports.useEffect(function () {
+        savedCallback.current = callback;
+    }, [callback]);
+    // Set up the interval.
+    reactExports.useEffect(function () {
+        function tick() {
+            var toCall = savedCallback.current ? savedCallback.current : function () { return null; };
+            toCall();
+        }
+        if (delay !== null) {
+            var id_1 = setInterval(tick, delay);
+            return function () { return clearInterval(id_1); };
+        }
+    }, [delay]);
+};
+// Source: https://overreacted.io/making-setinterval-declarative-with-react-hooks/
+
 var GameWrapper = function (_a) {
+    var _b = reactExports.useContext(GameContext), gameState = _b.gameState, setGameState = _b.setGameState;
+    var _c = reactExports.useState(false), gameInit = _c[0], setGameInit = _c[1];
+    reactExports.useEffect(function () {
+        if (!gameInit) {
+            var loop = createFullLoop();
+            setGameState(__assign(__assign({}, gameState), { shipCoords: __spreadArray([], loop[0].point, true), shipIdx: 0, loop: loop }));
+            setGameInit(true);
+        }
+    }, []);
+    useInterval(function () {
+        // Each tick of game time
+        var shipIdx = gameState.shipIdx, loop = gameState.loop, shipCoords = gameState.shipCoords;
+        if (!loop) {
+            return;
+        }
+        if (shipIdx < loop.length - ShipConstants.SHIP_SPEED) {
+            shipIdx += ShipConstants.SHIP_SPEED;
+        }
+        else {
+            shipIdx = 0;
+        }
+        var currentTileIdx = Math.floor(shipIdx);
+        var nextTileIdx = (currentTileIdx + 1) % loop.length;
+        var velocity = subtract(loop[nextTileIdx].point, loop[currentTileIdx].point).map(function (n) { return n * ShipConstants.SHIP_SPEED; });
+        shipCoords = add(shipCoords, velocity);
+        setGameState(__assign(__assign({}, gameState), { shipIdx: shipIdx, shipCoords: __spreadArray([], shipCoords, true) }));
+    }, 100);
     return (React.createElement("div", { id: "gameWrapper" },
         React.createElement(Loop, null)));
 };
 
-var GameContext = reactExports.createContext({
-    gameState: {},
-    updateQueue: [],
-    drawQueue: [],
-});
 var App = function (_a) {
     var _b = reactExports.useState({}), gameState = _b[0], setGameState = _b[1];
     var _c = reactExports.useState([]), drawQueue = _c[0], setDrawQueue = _c[1];

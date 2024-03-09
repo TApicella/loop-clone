@@ -1,29 +1,23 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { GameContext } from 'App';
+import { GameContext } from 'GameContext';
 import { createFullLoop } from 'scripts/generateLoop';
 import LoopTile, { ILoopTile } from './LoopTile';
+import { Ship } from './Ship';
 
 const Loop = ({ }) => {
     const { gameState, setGameState } = useContext(GameContext);
-    const [loopCreated, setLoopCreated] = useState(!!gameState.loop)
-
-    useEffect(() => {
-        if (!loopCreated) {
-            let loop = createFullLoop();
-            console.log(loop);
-            setGameState({ ...gameState, loop })
-            setLoopCreated(true);
-        }
-    })
 
     return (
-        <div id="loop">
-            {!gameState.loop && <div>Oops</div>}
-            {gameState.loop && gameState.loop.map((cell, i) => {
-                return <LoopTile {...cell} key={"tile"+i} idx={i}/>
-            })
-            }
-        </div>
+        <>
+            <div id="loop">
+                <Ship />
+                {!gameState.loop && <div>Oops</div>}
+                {gameState.loop && gameState.loop.map((cell, i) => {
+                    return <LoopTile {...cell} key={"tile" + i} idx={i} />
+                })
+                }
+            </div>
+        </>
     );
 }
 

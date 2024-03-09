@@ -1,3 +1,18 @@
+import { add as arrayAdd } from 'mathjs';
+
+const TILE_WIDTH = 100;
+const TILE_OFFSET = [0.25, 0.25];
+
+export const GridConstants = {
+    TILE_OFFSET, TILE_WIDTH
+}
+
+export const getPointInPx = (point, scale, offset, log=false) => {
+    offset = offset || [0, 0];
+    if(log) console.log(point, scale, offset, arrayAdd(point, offset));
+    return arrayAdd(point, offset).map((n) => n * scale);
+}
+
 // /**
 //  * Makes an element draggable and sets up event handlers
 // */

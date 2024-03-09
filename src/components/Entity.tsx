@@ -1,5 +1,5 @@
 import React, { useContext, useEffect } from 'react';
-import { IGameContext, GameContext } from '../App';
+import { IGameContext, GameContext } from 'GameContext';
 
 interface IEntity {
     name: string;

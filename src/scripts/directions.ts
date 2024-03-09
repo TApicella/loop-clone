@@ -20,6 +20,15 @@ export const directionToIndex = {
     "LEFT": 3
 }
 
+export const getRotation = (direction) => {
+  return {
+    "UP": 0,
+    "RIGHT": "0.25turn",
+    "DOWN": "0.5turn",
+    "LEFT": "0.75turn",
+  }[direction]
+}
+
 export const nextDir = (dir) => {
     return (dir+1)%4
 }
